@@ -1,26 +1,59 @@
-pragma solidity 0.4.24;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/DetailedERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/PausableToken.sol";
-import "../utils/OwnableContract.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-
-contract WBTC is StandardToken, DetailedERC20("Wrapped BTC", "WBTC", 8),
-    MintableToken, BurnableToken, PausableToken, OwnableContract {
-
-    function burn(uint value) public onlyOwner {
-        super.burn(value);
+contract NBTC is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
+    constructor() ERC20("Wrapped NBTC", "NBTC") Ownable(msg.sender) {
+        _mint(msg.sender, 0); // Initial supply is set to 0
     }
 
-    function finishMinting() public onlyOwner returns (bool) {
-        return false;
+    /**
+     * @dev Fonction de mint accessible uniquement au propriétaire.
+     */
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
     }
 
-    function renounceOwnership() public onlyOwner {
-        revert("renouncing ownership is blocked");
+    /**
+     * @dev Fonction de burn accessible uniquement au propriétaire.
+     */
+    function burn(uint256 amount) public override onlyOwner {
+        super.burn(amount);
     }
+
+    /**
+     * @dev Bloquer la renonciation à la propriété.
+     */
+    function renounceOwnership() public view override onlyOwner {
+    revert("Renouncing ownership is blocked");
 }
 
+    /**
+     * @dev Mettre en pause le contrat.
+     */
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Réactiver le contrat.
+     */
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    /**
+     * @dev Surcharge de la fonction `_update` pour résoudre le conflit.
+     */
+    function _update(address from, address to, uint256 value)
+        internal
+        virtual
+        override(ERC20, ERC20Pausable)
+    {
+        super._update(from, to, value); // Appel à la version avec `whenNotPaused`
+    }
+}
